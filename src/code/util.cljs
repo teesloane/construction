@@ -7,3 +7,6 @@
 
 (defn rand-b-w [a b]
   (q/map-range (rand 1) 0 1 a b))
+
+(defn %of [a b]
+  (* (/ a 100) b))
