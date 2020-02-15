@@ -40,3 +40,4 @@ goog.addDependency("../quil/middlewares/navigation_2d.js", ['quil.middlewares.na
 goog.addDependency("../quil/middlewares/fun_mode.js", ['quil.middlewares.fun_mode'], ['cljs.core', 'quil.core']);
 goog.addDependency("../quil/middleware.js", ['quil.middleware'], ['cljs.core', 'quil.middlewares.navigation_3d', 'quil.middlewares.navigation_2d', 'quil.middlewares.fun_mode']);
 goog.addDependency("../code/core.js", ['code.core'], ['cljs.core', 'code.util', 'quil.core', 'quil.middleware']);
+goog.addDependency("../code/pipes.js", ['code.pipes'], ['cljs.core', 'code.util', 'quil.core', 'quil.middleware']);

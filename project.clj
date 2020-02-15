@@ -18,7 +18,7 @@
              :source-paths ["src"]
              :figwheel true
              :compiler
-             {:main "code.core"
+             {:main "code.pipes"
               :output-to "resources/public/js/main.js"
               :output-dir "resources/public/js/development"
               :asset-path "js/development"}}
@@ -26,7 +26,7 @@
             {:id "optimized"
              :source-paths ["src"]
              :compiler
-             {:main "code.core"
+             {:main "code.pipes"
               :output-to "resources/public/js/main.js"
               :output-dir "resources/public/js/optimized"
               :asset-path "js/optimized"
