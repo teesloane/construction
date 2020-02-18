@@ -33,9 +33,34 @@
   They end random-ishly somewhere inside the frame, either 1/3 or 2/3 the way across
   These lines end with a circle at their tip."
   [{:keys [pipe-width fw fh ifw ifh] :as config}]
-  (let []
-    (q/rect 10 20 (u/%of 66 ifw) pipe-width)
-    (q/ellipse (+ pipe-width (u/%of 66 ifw) ) 25 10 10)))
+  (let [num-bars 3
+        space-between-bars (u/%of 13 ifw)
+        first-bar-width    (u/%of 33 ifw)] ;; make this variable
+    (doseq [bar (range 0 num-bars)
+            :let [y-top-offset  (* 3 pipe-width) ;; arbitrary -
+                  y-pos         (+ y-top-offset (* bar (* 2 pipe-width)))
+                  ;; left pipe 
+                  lpipe-x       pipe-width ;; offset from outer frame
+                  lpipe-y       y-pos
+                  lpipe-w       first-bar-width
+
+                  circ1-x       (+ pipe-width first-bar-width)
+                  circ-r        pipe-width
+                  circ1-y       (+ (/ circ-r 2) y-pos)
+
+                  circ2-y       circ1-y
+                  circ2-x       (+ space-between-bars circ1-x)
+
+                  rpipe-x       circ2-x
+                  rpipe-w        (- fw circ2-x)]]
+      ;; batch one
+      (q/rect lpipe-x lpipe-y lpipe-w pipe-width)
+      (q/ellipse circ1-x circ1-y  circ-r circ-r)
+
+      ;; batch 2
+      (q/rect rpipe-x y-pos rpipe-w pipe-width)
+      (q/ellipse circ2-x circ1-y circ-r circ-r)
+      (prn "hi"))))
 
 
 
@@ -43,7 +68,7 @@
   "Builds the outer rectangular frame which is made of 4 long, thin rectangles."
 
   []
-  (let [pipe-width       (u/%of 2 (q/width))                            ; width of inner pipes (a bit smaller than frame)
+  (let [pipe-width       (u/%of 2.5 (q/width))                            ; width of inner pipes (a bit smaller than frame)
         offset-from-edge (u/%of 25 (q/width))                           ; centers on the canvas
         span-w           (- (- (q/width) offset-from-edge) pipe-width)  ; frame width
         span-h           (- (- (q/height) offset-from-edge) pipe-width) ; frame height
