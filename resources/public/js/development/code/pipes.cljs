@@ -28,23 +28,28 @@
       (q/rect x pipe-width bar-width ifh))))
 
 (defn- build-bg-horiz-pipes
-  "The first layer of pipes, these run horizontall behind build-vert-pipes
+  "The first layer of pipes, these run horizontally behind build-vert-pipes
   These start flush with inner frame xl and  xr.
   They end random-ishly somewhere inside the frame, either 1/3 or 2/3 the way across
   These lines end with a circle at their tip."
   [{:keys [pipe-width fw fh ifw ifh] :as config}]
-  (let [num-bars 3
-        space-between-bars (u/%of 13 ifw)
-        first-bar-width    (u/%of 33 ifw)] ;; make this variable
+  (let [num-bars 6
+        space-between-bars (u/%of 11 ifw)
+        first-bar-width    (u/%of 66 ifw)
+        set-width [(u/%of 33 ifw) (u/%of 66 ifw)]]
+         ;; make this variable
     (doseq [bar (range 0 num-bars)
-            :let [y-top-offset  (* 3 pipe-width) ;; arbitrary -
-                  y-pos         (+ y-top-offset (* bar (* 2 pipe-width)))
-                  ;; left pipe 
+            :let [bar-type      (even? bar)
+
+                  y-top-offset  (* 3 pipe-width) ;; arbitrary - how far from top
+                  y-pos         (+ y-top-offset (* bar pipe-width))
+                  ;; left pipe
                   lpipe-x       pipe-width ;; offset from outer frame
                   lpipe-y       y-pos
-                  lpipe-w       first-bar-width
+                  ;; lpipe-w       first-bar-width
+                  lpipe-w       (if bar-type (first set-width) (second set-width))
 
-                  circ1-x       (+ pipe-width first-bar-width)
+                  circ1-x       (+ pipe-width lpipe-w)
                   circ-r        pipe-width
                   circ1-y       (+ (/ circ-r 2) y-pos)
 
@@ -52,15 +57,32 @@
                   circ2-x       (+ space-between-bars circ1-x)
 
                   rpipe-x       circ2-x
-                  rpipe-w        (- fw circ2-x)]]
-      ;; batch one
-      (q/rect lpipe-x lpipe-y lpipe-w pipe-width)
-      (q/ellipse circ1-x circ1-y  circ-r circ-r)
+                  rpipe-w        (- fw circ2-x)
+                  cc-off 1]] ; Circle / curve offset for end of horiz bar - FIXME -- magic #
 
-      ;; batch 2
-      (q/rect rpipe-x y-pos rpipe-w pipe-width)
-      (q/ellipse circ2-x circ1-y circ-r circ-r)
-      (prn "hi"))))
+
+      ;; batch one
+      (if bar-type
+        ;; Draw bars with circular-ends
+        (do
+          (q/rect lpipe-x lpipe-y lpipe-w pipe-width)
+          (q/ellipse circ1-x circ1-y  circ-r circ-r)
+          ;; batch 2
+          (q/rect rpipe-x y-pos rpipe-w pipe-width)
+          (q/ellipse circ2-x circ1-y circ-r circ-r))
+        ;; draw bars with rounded edges.
+        ;; FIXME - this block needs to overtop of the vert bars
+        ;; To do this, create a new function, and simply pass this value in as a fn
+        ;; then eval the fn after everything else has drawn!
+        (do
+          ;; left-side
+          (q/rect lpipe-x lpipe-y lpipe-w pipe-width)
+          (q/arc (- circ1-x cc-off) circ1-y  circ-r circ-r (- q/HALF-PI) q/HALF-PI)
+          ;; batch 2 - right-side lines
+          (q/rect rpipe-x y-pos rpipe-w pipe-width)
+          (q/arc (+ cc-off circ2-x) circ1-y circ-r circ-r q/HALF-PI (- q/HALF-PI)))))))
+
+        
 
 
 
@@ -68,7 +90,7 @@
   "Builds the outer rectangular frame which is made of 4 long, thin rectangles."
 
   []
-  (let [pipe-width       (u/%of 2.5 (q/width))                            ; width of inner pipes (a bit smaller than frame)
+  (let [pipe-width       (u/%of 2 (q/width))                            ; width of inner pipes (a bit smaller than frame)
         offset-from-edge (u/%of 25 (q/width))                           ; centers on the canvas
         span-w           (- (- (q/width) offset-from-edge) pipe-width)  ; frame width
         span-h           (- (- (q/height) offset-from-edge) pipe-width) ; frame height
@@ -84,6 +106,7 @@
       (q/rect span-w 0 pipe-width span-h)          ; right sidebar
       (q/rect pipe-width span-h span-w pipe-width) ; bottom bar
       (q/rect 0 pipe-width pipe-width span-h)      ; left bar
+
       (build-bg-horiz-pipes config)
       (build-vert-pipes config))))
 
