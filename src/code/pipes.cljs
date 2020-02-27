@@ -33,25 +33,28 @@
 (defn build-fg-horiz-pipes
   "Used for drawing the overlaying top bars, alongside bg-bars
   Requires state! (@fg-pipes)"
-  [{:keys [lpipe-x
-           lpipe-y
-           lpipe-w
-           rpipe-w
-           pipe-width
-           rpipe-x
-           y-pos
-           pipe-width
-           circ1-y
-           circ-r
-           circ1-x
-           cc-off
-           circ2-x :as vals]}]
-  ;; left side of lines.
-  (q/rect lpipe-x lpipe-y lpipe-w pipe-width)
-  (q/arc (- circ1-x cc-off) circ1-y  circ-r circ-r (- q/HALF-PI) q/HALF-PI)
-  ;; batch 2 - right-side lines
-  (q/rect rpipe-x y-pos rpipe-w pipe-width)
-  (q/arc (+ cc-off circ2-x) circ1-y circ-r circ-r q/HALF-PI (- q/HALF-PI)))
+  [pipes-list]
+
+  (doseq [f @pipes-list
+          :let [{:keys [lpipe-x
+                        lpipe-y
+                        lpipe-w
+                        rpipe-w
+                        pipe-width
+                        rpipe-x
+                        y-pos
+                        pipe-width
+                        circ1-y
+                        circ-r
+                        circ1-x
+                        cc-off
+                        circ2-x] :as vals} f]]
+    ;; left side of lines.
+    (q/rect lpipe-x lpipe-y lpipe-w pipe-width)
+    (q/arc (- circ1-x cc-off) circ1-y  circ-r circ-r (- q/HALF-PI) q/HALF-PI)
+    ;; batch 2 - right-side lines
+    (q/rect rpipe-x y-pos rpipe-w pipe-width)
+    (q/arc (+ cc-off circ2-x) circ1-y circ-r circ-r q/HALF-PI (- q/HALF-PI))))
 
 
 
@@ -89,8 +92,7 @@
 
                   rpipe-x       circ2-x
                   rpipe-w        (- fw circ2-x)
-                  cc-off 1]]
-             ; Circle / curve offset for end of horiz bar - FIXME -- magic #
+                  cc-off 1]] ; Circle / curve offset for end of horiz bar - FIXME -- magic #
 
 
       ;; batch one
@@ -102,10 +104,6 @@
           ;; batch 2
           (q/rect rpipe-x y-pos rpipe-w pipe-width)
           (q/ellipse circ2-x circ1-y circ-r circ-r))
-        ;; draw bars with rounded edges.
-        ;; FIXME - this block needs to overtop of the vert bars
-        ;; To do this, create a new function, and simply pass this value in as a fn
-        ;; then eval the fn after everything else has drawn!
         (swap! local-horiz-cache conj {:lpipe-x    lpipe-x
                                        :lpipe-y    lpipe-y
                                        :lpipe-w    lpipe-w
@@ -118,9 +116,6 @@
                                        :circ-r     circ-r
                                        :circ1-x    circ1-x
                                        :cc-off     cc-off})))
-
-
-
     (reset! fg-pipes @local-horiz-cache)))
 
         
@@ -129,18 +124,23 @@
 
 (defn- build-frame
   "Builds the outer rectangular frame which is made of 4 long, thin rectangles."
-
   []
   (let [pipe-width       (u/%of 2 (q/width))                            ; width of inner pipes (a bit smaller than frame)
         offset-from-edge (u/%of 25 (q/width))                           ; centers on the canvas
         span-w           (- (- (q/width) offset-from-edge) pipe-width)  ; frame width
         span-h           (- (- (q/height) offset-from-edge) pipe-width) ; frame height
         tx               (/ offset-from-edge 2)
+        num-batches      3 ; a batch is a set of fg and bg pipes
+        offset-batch     (u/%of 33.3 span-h)
         config           {:pipe-width pipe-width
                           :fw         span-w ;
                           :fh         span-h ;
                           :ifw        (- span-w pipe-width)
-                          :ifh        (- span-h pipe-width)}]
+                          :ifh        (- span-h pipe-width)}
+        seq-layers       (fn [func]
+                           (doseq [amt (range 0 num-batches)]
+                             (q/with-translation [0 (* amt offset-batch)]
+                              (func))))]
 
     (q/with-translation [tx tx]
       ;; Frame
@@ -150,11 +150,10 @@
       (q/rect 0 pipe-width pipe-width span-h)      ; left bar
 
 
-      ;; Inner contents
-      (build-bg-horiz-pipes config)
+      ;; Inner contents - some layering magic
+      (seq-layers (partial build-bg-horiz-pipes config))
       (build-vert-pipes config)
-      (doseq [f @fg-pipes]
-        (build-fg-horiz-pipes f)))))
+      (seq-layers (partial build-fg-horiz-pipes fg-pipes)))))
 
 
 
