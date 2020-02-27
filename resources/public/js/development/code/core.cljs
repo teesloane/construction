@@ -21,8 +21,8 @@
 ;;   (doseq [ line sq->span
 ;;           :let [sine-input  (u/map-n->0-1 line x-l x-r)
 ;;                 end-y-point (+ y-b (* amp (q/sin (+ (* sine-input 10)))))]]
-;;     (q/stroke-weight u/%of 1 (q/width))
-;;     (q/line x-l y-b 250 250)))
+;;     (q/stroke-weight (u/%of 0.25 (q/width)))
+;;     (q/line x-l y-b 0 250)))
 
 (defmethod draw-lines :sine
   [{:keys [sq->span size y-off x-l x-r y-b y-m y-t amp] :as lset}]
@@ -62,7 +62,7 @@
    
       (q/stroke (q/color 180 10 1))
 
-      (q/stroke-weight (u/%of 0.125 (q/width)))
+      (q/stroke-weight (u/%of 0.25 (q/width)))
       (q/with-translation [outer-sq outer-sq]
         (q/rect x y size size)
         (draw-lines {:type     (rnd-draw-line-method)
@@ -78,30 +78,28 @@
                      :y-b      (+ y size)}))))        ; base
 
 (defn draw-state [state]
-  (q/no-loop)
+  ;; (q/no-loop)
   (q/background 240)
-  (let [sq-div      12                                    ; width size is divided against sketch width
-        margin          (u/%of 4 (q/width))
-        ;; margin      30 #_(/ (q/width 10))                                  ; space between squares
-        num-squares 6                                     ; number along x + y axis
-        size        (/ (q/width)  sq-div)                 ; size of square, but also a measuring stick
-        offset      (* (/ num-squares 2) (+ margin size)) ; offset for centering on canvas
-        halfw       (- (/ (q/width)  2) offset)           ; for translation
+  (let [num-squares 3                                       ; number along x + y axis
+        sq-outer    (u/%of 33.33 (q/width))                 #_ (u/%of 10 (q/width))
+        sq-inner        (u/%of 60 sq-outer)
+        offset      (* (/ num-squares 2) (+ sq-outer sq-inner)) ; offset for centering on canvas
+        halfw       (- (/ (q/width)  2) offset)             ; for translation
         halfh       (- (/ (q/height) 2) offset)]          ; for translation
     (doseq [l (range 0 num-squares)]                      ; build horizontal rows
-      (doseq [yr   (range 0 num-squares)                  ; vertical rows
-              :let [xpos (+ (* margin l) (* size l))      ; pos of x+y of squares
-                    ypos (+ (* margin yr) (* size yr))]]  ; ^
-        (q/with-translation [halfw halfh]
-          (q/rect xpos ypos (+ margin size) (+ margin size))
-          (draw-square [xpos ypos] size margin)))))
+      (doseq [yr   (range 0 num-squares) ; vertical rows
+              :let [xpos (+ (* sq-outer l))      ; pos of x+y of squares
+                    ypos (+ (* sq-outer yr))]]  ; ^
+        ;; (q/with-translation [halfw halfh]
+        (q/rect xpos ypos sq-outer sq-outer)
+        (draw-square [xpos ypos] sq-inner (- sq-outer sq-inner)))))
   (prn (-> draw-lines methods keys))
   #_(q/save "img.jpg"))
 
 (defn ^:export run-sketch []
   (q/defsketch code
     :host "code"
-    :size [2800 2800]
+    :size [1500 1500]
     :setup setup
     :update update-state
     :draw draw-state

@@ -27,18 +27,49 @@
             :let [x (+ bar-offset (* b bar-interval))]]
       (q/rect x pipe-width bar-width ifh))))
 
+
+(def fg-pipes (atom []))
+
+(defn build-fg-horiz-pipes
+  "Used for drawing the overlaying top bars, alongside bg-bars
+  Requires state! (@fg-pipes)"
+  [{:keys [lpipe-x
+           lpipe-y
+           lpipe-w
+           rpipe-w
+           pipe-width
+           rpipe-x
+           y-pos
+           pipe-width
+           circ1-y
+           circ-r
+           circ1-x
+           cc-off
+           circ2-x :as vals]}]
+  ;; left side of lines.
+  (q/rect lpipe-x lpipe-y lpipe-w pipe-width)
+  (q/arc (- circ1-x cc-off) circ1-y  circ-r circ-r (- q/HALF-PI) q/HALF-PI)
+  ;; batch 2 - right-side lines
+  (q/rect rpipe-x y-pos rpipe-w pipe-width)
+  (q/arc (+ cc-off circ2-x) circ1-y circ-r circ-r q/HALF-PI (- q/HALF-PI)))
+
+
+
+
 (defn- build-bg-horiz-pipes
   "The first layer of pipes, these run horizontally behind build-vert-pipes
   These start flush with inner frame xl and  xr.
   They end random-ishly somewhere inside the frame, either 1/3 or 2/3 the way across
   These lines end with a circle at their tip."
   [{:keys [pipe-width fw fh ifw ifh] :as config}]
-  (let [num-bars 6
+  (let [num-bars           6
         space-between-bars (u/%of 11 ifw)
         first-bar-width    (u/%of 66 ifw)
-        set-width [(u/%of 33 ifw) (u/%of 66 ifw)]]
+        set-width          [(u/%of 33 ifw) (u/%of 66 ifw)]
+        local-horiz-cache  (atom [])]
+
          ;; make this variable
-    (doseq [bar (range 0 num-bars)
+    (doseq [bar  (range 0 num-bars)
             :let [bar-type      (even? bar)
 
                   y-top-offset  (* 3 pipe-width) ;; arbitrary - how far from top
@@ -58,7 +89,8 @@
 
                   rpipe-x       circ2-x
                   rpipe-w        (- fw circ2-x)
-                  cc-off 1]] ; Circle / curve offset for end of horiz bar - FIXME -- magic #
+                  cc-off 1]]
+             ; Circle / curve offset for end of horiz bar - FIXME -- magic #
 
 
       ;; batch one
@@ -74,13 +106,22 @@
         ;; FIXME - this block needs to overtop of the vert bars
         ;; To do this, create a new function, and simply pass this value in as a fn
         ;; then eval the fn after everything else has drawn!
-        (do
-          ;; left-side
-          (q/rect lpipe-x lpipe-y lpipe-w pipe-width)
-          (q/arc (- circ1-x cc-off) circ1-y  circ-r circ-r (- q/HALF-PI) q/HALF-PI)
-          ;; batch 2 - right-side lines
-          (q/rect rpipe-x y-pos rpipe-w pipe-width)
-          (q/arc (+ cc-off circ2-x) circ1-y circ-r circ-r q/HALF-PI (- q/HALF-PI)))))))
+        (swap! local-horiz-cache conj {:lpipe-x    lpipe-x
+                                       :lpipe-y    lpipe-y
+                                       :lpipe-w    lpipe-w
+                                       :rpipe-w    rpipe-w
+                                       :pipe-width pipe-width
+                                       :rpipe-x    rpipe-x
+                                       :y-pos      y-pos
+                                       :circ2-x    circ2-x
+                                       :circ1-y    circ1-y
+                                       :circ-r     circ-r
+                                       :circ1-x    circ1-x
+                                       :cc-off     cc-off})))
+
+
+
+    (reset! fg-pipes @local-horiz-cache)))
 
         
 
@@ -102,13 +143,19 @@
                           :ifh        (- span-h pipe-width)}]
 
     (q/with-translation [tx tx]
+      ;; Frame
       (q/rect 0 0 span-w pipe-width)               ; top bar
       (q/rect span-w 0 pipe-width span-h)          ; right sidebar
       (q/rect pipe-width span-h span-w pipe-width) ; bottom bar
       (q/rect 0 pipe-width pipe-width span-h)      ; left bar
 
+
+      ;; Inner contents
       (build-bg-horiz-pipes config)
-      (build-vert-pipes config))))
+      (build-vert-pipes config)
+      (doseq [f @fg-pipes]
+        (build-fg-horiz-pipes f)))))
+
 
 
 (defn setup []
