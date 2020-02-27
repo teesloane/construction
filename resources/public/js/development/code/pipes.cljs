@@ -11,10 +11,9 @@
             [quil.middleware :as m]
             [code.util :as u]))
 
+;; this is a bit different than normal state
+;; so it's out of the state map until otherwise figured out...
 (def fg-pipes (atom []))
-
-(defn get-stroke-weight []
-  (q/stroke-weight 4))
 
 (defn- build-vert-pipes
   "Draws vertical pipes within the structure of build-frame,
@@ -61,7 +60,7 @@
     (q/arc (+ cc-off circ2-x) circ1-y circ-r circ-r q/HALF-PI (- q/HALF-PI))))
 
 
-(def noise-state (atom 0))
+(def noise-seed-shadow (atom []))
 
 
 (defn- build-bg-horiz-pipes
@@ -69,25 +68,27 @@
   These start flush with inner frame xl and  xr.
   They end random-ishly somewhere inside the frame, either 1/3 or 2/3 the way across
   These lines end with a circle at their tip."
-  [{:keys [pipe-width frame-width fw fh ifw ifh num-pipes] :as config}]
-  (swap! noise-state (fn [r] (+ r 0.002)))
-  (let [space-between-bars (u/%of 11 ifw)
-        rand-l             (q/map-range (q/noise @noise-state) 0 1 5 95) #_(u/rand-b-w 5 80)
-        rand-r             (u/rand-b-w 5 80)
-        set-width          [(u/%of rand-l ifw) (u/%of rand-l ifw)]
-        pipe-width-n       (u/%of 75 pipe-width) ;; var shadowin
+  [{:keys [pipe-width frame-width fw fh ifw ifh num-pipes noise-seeds] :as state}]
+  (let [holding-seeds      (atom noise-seeds)
+        space-between-bars (u/%of 11 ifw)
+        get-rand-val!       (fn []
+                             (let [f (first @noise-seed-shadow)]
+                               (swap! noise-seed-shadow (fn [x] (rest x)))
+                               (q/map-range (q/noise f) 0 1 5 (q/width))))
+
+
         local-horiz-cache  (atom [])]
 
          ;; make this variable
     (doseq [bar  (range 0 num-pipes)
             :let [bar-type      (even? bar)
 
-                  y-top-offset  0 #_(* 3 pipe-width) ;; arbitrary - how far from top
+                  y-top-offset  0 
                   y-pos         (+ y-top-offset (* bar pipe-width))
                   ;; left pipe
                   lpipe-x       frame-width ;; offset from outer frame
                   lpipe-y       y-pos
-                  lpipe-w       (if bar-type (first set-width) (second set-width))
+                  lpipe-w       (get-rand-val!)
 
                   circ1-x       (+ frame-width lpipe-w)
                   circ-r        pipe-width
@@ -98,17 +99,22 @@
 
                   rpipe-x       circ2-x
                   rpipe-w        (- fw circ2-x)
-                  cc-off (u/%of 0.35 (q/width))]] ; Circle / curve offset for end of horiz bar - FIXME -- magic #
+                  cc-off (u/%of 0.2 (q/width))]] ; Circle / curve offset for end of horiz bar - FIXME -- magic #
 
 
       ;; batch one
       (if bar-type
         ;; Draw bars with circular-ends
         (do
+          (q/fill lpipe-w 176 60)
           (q/rect lpipe-x lpipe-y lpipe-w pipe-width)
+          (q/fill 146 lpipe-w  100)
           (q/ellipse circ1-x circ1-y  circ-r circ-r)
           ;; batch 2
+          (q/fill 255)
+          (q/fill 46 lpipe-w 113)
           (q/rect rpipe-x y-pos rpipe-w pipe-width)
+          (q/fill lpipe-w)
           (q/ellipse circ2-x circ1-y circ-r circ-r))
         (swap! local-horiz-cache conj {:lpipe-x    lpipe-x
                                        :lpipe-y    lpipe-y
@@ -126,14 +132,32 @@
 
         
 
-
-
 (defn- build-frame
   "Builds the outer rectangular frame which is made of 4 long, thin rectangles."
-  []
-  (let [pipe-width            (u/%of 1.5 (q/width))                          ; width of inner pipes (a bit smaller than frame)
+  [{:keys [span-w frame-width span-h seq-layers] :as state}]
+
+;; (q/with-translation [tx tx])
+  ;; Frame
+  (q/rect 0 0 span-w frame-width)               ; top bar
+  (q/rect span-w 0 frame-width span-h)          ; right sidebar
+  (q/rect frame-width span-h span-w frame-width) ; bottom bar
+  (q/rect 0 frame-width frame-width span-h)      ; left bar
+
+
+  ;; Inner contents - some layering magic
+  (seq-layers (partial build-bg-horiz-pipes state))
+  (build-vert-pipes state)
+  (seq-layers (partial build-fg-horiz-pipes fg-pipes)))
+
+
+
+(defn setup []
+  (q/frame-rate 24)
+  (q/smooth 2)
+  (q/color-mode :rgb)
+  (let [pipe-width            (u/%of 1.5 (q/width))                              ; width of inner pipes (a bit smaller than frame)
         frame-width           (u/%of 3 (q/width))
-        offset-from-edge      (u/%of 25 (q/width))                         ; centers on the canvas
+        offset-from-edge      (u/%of 25 (q/width))                               ; centers on the canvas
         span-w                (- (q/width)  frame-width)
         span-h                (- (q/height) frame-width)
         inner-height          (- span-h frame-width)
@@ -141,54 +165,41 @@
         ;; span-w           (- (- (q/width) offset-from-edge) pipe-width)  ; frame width
         ;; span-h           (- (- (q/height) offset-from-edge) pipe-width) ; frame height
         tx                    (/ offset-from-edge 2)
-        num-batches           6                                            ; a batch is a set of fg and bg pipes
+        num-batches           6                                                  ; a batch is a set of fg and bg pipes
         num-pipes             5
         ;; used for centering all horiz bars in middle of frame.
         height-of-batch       (+ pipe-width pipe-width (* pipe-width num-pipes)) ; plus the sizes inbetween
-        height-of-all-batches (* height-of-batch num-batches) ; 
-        offset-from-top       (/ (- inner-height height-of-all-batches) 2) ;; sum of the height of all batches, subtracted from height of inner-frame divided by two
-        _ (prn "offset from top is" inner-height offset-from-top height-of-batch height-of-all-batches)
+        height-of-all-batches (* height-of-batch num-batches)                    ;
+        offset-from-top       (/ (- inner-height height-of-all-batches) 2)       ;; sum of the height of all batches, subtracted from height of inner-frame divided by two
         offset-batch          (let [x (/ span-h (+ 3 num-batches))]
                                 (+ x (/ x 3)))
-        ;; passed around to sub-draw funcs
-        config                {:pipe-width      pipe-width
-                               :frame-width     frame-width
-                               :num-pipes       num-pipes
-                               :num-batches     num-batches
-                               :offset-from-top offset-from-top
-                               :fw              span-w       ;
-                               :fh              span-h       ;
-                               :ifw             (- span-w pipe-width)
-                               :ifh             inner-height #_ (- span-h pipe-width)}
         ;; sequence the sub drawing funcs
         seq-layers            (fn [func]
-                                (doseq [amt (range 0 (:num-batches config))]
+                                (doseq [amt (range 0 num-batches)]
                                   (q/with-translation [0 (+  (/ offset-from-top 2) (* offset-from-top amt))]
                                     (func))))]
+    ;; end-state object
+    {:pipe-width      pipe-width
+     :span-w          span-w
+     :span-h          span-h
+     :frame-width     frame-width
+     :num-pipes       num-pipes
+     :num-batches     num-batches
+     :offset-from-top offset-from-top
+     :fw              span-w ;
+     :fh              span-h ;
+     :ifw             (- span-w pipe-width)
+     :ifh             inner-height
+     :noise-seeds     (for [i (range 0 (* num-pipes num-batches))] (rand 100))
+     :seq-layers      seq-layers}))
 
-    ;; (q/with-translation [tx tx])
-      ;; Frame
-    (q/rect 0 0 span-w frame-width)               ; top bar
-    (q/rect span-w 0 frame-width span-h)          ; right sidebar
-    (q/rect frame-width span-h span-w frame-width) ; bottom bar
-    (q/rect 0 frame-width frame-width span-h)      ; left bar
-
-
-    ;; Inner contents - some layering magic
-    (seq-layers (partial build-bg-horiz-pipes config))
-    (build-vert-pipes config)
-    (seq-layers (partial build-fg-horiz-pipes fg-pipes))))
-
-
-
-(defn setup []
-  (q/frame-rate 24)
-  (q/smooth 2)
-  (q/color-mode :hsb)
-  {})
 
 (defn update-state [state]
-  {})
+  (let [inc-d-seeds (map (fn [x] (+ x 0.01)) (:noise-seeds state))
+        new-state (assoc state :noise-seeds inc-d-seeds)]
+      (reset! noise-seed-shadow (:noise-seeds new-state))
+      new-state))
+
 
 ;; -- Line drawings ---
 
@@ -196,13 +207,13 @@
   ;; (q/no-loop)
   (q/stroke-weight (u/%of 0.25 (q/width)) #_3)
   (q/background 240)
-  (build-frame)
+  (build-frame state)
   #_(q/save "img.jpg"))
 
 (defn ^:export run-sketch []
   (q/defsketch code
     :host "code"
-    :size [800 800]
+    :size [500 500]
     :setup setup
     :update update-state
     :draw draw-state
