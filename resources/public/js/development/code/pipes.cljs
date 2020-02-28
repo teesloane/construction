@@ -15,6 +15,8 @@
 ;; so it's out of the state map until otherwise figured out...
 (def fg-pipes (atom []))
 
+
+
 (defn- build-vert-pipes
   "Draws vertical pipes within the structure of build-frame,
   pipes are spread evenly across the frame, default numbering 5.
@@ -74,7 +76,7 @@
         get-rand-val!       (fn []
                              (let [f (first @noise-seed-shadow)]
                                (swap! noise-seed-shadow (fn [x] (rest x)))
-                               (q/map-range (q/noise f) 0 1 5 (q/width))))
+                               (q/map-range (q/noise f) 0 1 5 (u/%of 95 (q/width)))))
 
 
         local-horiz-cache  (atom [])]
@@ -106,16 +108,16 @@
       (if bar-type
         ;; Draw bars with circular-ends
         (do
-          (q/fill lpipe-w 176 60)
+          (q/fill lpipe-w 172 60)
           (q/rect lpipe-x lpipe-y lpipe-w pipe-width)
-          (q/fill 146 lpipe-w  100)
+          (q/fill (+ 200 lpipe-w) 130  100)
           (q/ellipse circ1-x circ1-y  circ-r circ-r)
           ;; batch 2
-          (q/fill 255)
           (q/fill 46 lpipe-w 113)
           (q/rect rpipe-x y-pos rpipe-w pipe-width)
-          (q/fill lpipe-w)
+          (q/fill 80 200 lpipe-w)
           (q/ellipse circ2-x circ1-y circ-r circ-r))
+
         (swap! local-horiz-cache conj {:lpipe-x    lpipe-x
                                        :lpipe-y    lpipe-y
                                        :lpipe-w    lpipe-w
@@ -213,7 +215,7 @@
 (defn ^:export run-sketch []
   (q/defsketch code
     :host "code"
-    :size [500 500]
+    :size [1500 1500]
     :setup setup
     :update update-state
     :draw draw-state
