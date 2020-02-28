@@ -4,7 +4,9 @@
 > Recreations of Margaret Priest's "The Construction Series" with Processing/Clojure-Quill
 
 ---
-![](./docs/2.png)
+<img style="padding: 64px" src="./docs/2.png" />
+<img style="padding: 64px" src="./docs/3.png"/>
+<img style="padding: 64px" src="./docs/4.png"/>
 ![](./docs/3.png)
 ![](./docs/4.png)
 
