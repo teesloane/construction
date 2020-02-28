@@ -61,6 +61,7 @@
     (q/arc (+ cc-off circ2-x) circ1-y circ-r circ-r q/HALF-PI (- q/HALF-PI))))
 
 
+(def noise-state (atom 0))
 
 
 (defn- build-bg-horiz-pipes
@@ -69,10 +70,11 @@
   They end random-ishly somewhere inside the frame, either 1/3 or 2/3 the way across
   These lines end with a circle at their tip."
   [{:keys [pipe-width frame-width fw fh ifw ifh num-pipes] :as config}]
+  (swap! noise-state (fn [r] (+ r 0.002)))
   (let [space-between-bars (u/%of 11 ifw)
-        rand-l             (u/rand-b-w 5 80)
+        rand-l             (q/map-range (q/noise @noise-state) 0 1 5 95) #_(u/rand-b-w 5 80)
         rand-r             (u/rand-b-w 5 80)
-        set-width          [(u/%of rand-l ifw) (u/%of rand-r ifw)]
+        set-width          [(u/%of rand-l ifw) (u/%of rand-l ifw)]
         pipe-width-n       (u/%of 75 pipe-width) ;; var shadowin
         local-horiz-cache  (atom [])]
 
@@ -180,7 +182,7 @@
 
 
 (defn setup []
-  (q/frame-rate 1)
+  (q/frame-rate 24)
   (q/smooth 2)
   (q/color-mode :hsb)
   {})
