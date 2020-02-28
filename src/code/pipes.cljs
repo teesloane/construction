@@ -15,6 +15,8 @@
 ;; so it's out of the state map until otherwise figured out...
 (def fg-pipes (atom []))
 
+(def colors [[100 3200 100] [1000 100 1]])
+
 
 
 (defn- build-vert-pipes
